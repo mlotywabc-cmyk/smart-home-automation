@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import pg from "pg";
+import { readFile } from "node:fs/promises";
 
 dotenv.config();
 
@@ -328,9 +329,32 @@ app.use((req, res) => {
   res.status(404).json({ error: "API endpoint not found." });
 });
 
-const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Smart Home API listening on port ${PORT}`);
+
+let server;
+
+async function start() {
+  if (pool) {
+    const schema = await readFile(
+      new URL("./schema.sql", import.meta.url),
+      "utf8"
+    );
+
+    await pool.query(schema);
+    console.log("Database tables initialized successfully.");
+  } else {
+    console.warn("DATABASE_URL is not configured.");
+  }
+
+  server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Smart Home API listening on port ${PORT}`);
+  });
+}
+
+start().catch((error) => {
+  console.error("Backend startup failed:", error.message);
+  process.exit(1);
 });
+
 
 async function shutdown() {
   server.close();
